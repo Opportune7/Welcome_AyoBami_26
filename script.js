@@ -160,7 +160,7 @@
   var iconOff    = document.getElementById("iconOff");
   var musicLabel = document.getElementById("musicLabel");
 
-  audio.volume = 0.35;
+  audio.volume = 0.78;
 
   // true = currently playing, false = paused
   var isPlaying = false;
