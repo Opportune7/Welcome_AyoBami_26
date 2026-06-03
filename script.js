@@ -154,58 +154,74 @@
   document.getElementById("copyBtn2").addEventListener("click", copyLink);
 
   // ── Background Music ──────────────────────────────────────
-  var audio     = document.getElementById("bgAudio");
-  var musicBtn  = document.getElementById("musicBtn");
-  var iconOn    = document.getElementById("iconOn");
-  var iconOff   = document.getElementById("iconOff");
+  var audio      = document.getElementById("bgAudio");
+  var musicBtn   = document.getElementById("musicBtn");
+  var iconOn     = document.getElementById("iconOn");
+  var iconOff    = document.getElementById("iconOff");
   var musicLabel = document.getElementById("musicLabel");
-  var isMuted   = false;
 
-  audio.volume = 0.35; // gentle background level
+  audio.volume = 0.35;
 
-  function setMusicState(muted) {
-    isMuted = muted;
-    if (muted) {
-      audio.pause();
-      iconOn.style.display  = "none";
-      iconOff.style.display = "block";
-      musicLabel.textContent = "Music off";
-      musicBtn.setAttribute("aria-label", "Unmute background music");
-      musicBtn.classList.add("muted");
-      musicBtn.classList.remove("playing");
-    } else {
-      audio.play().catch(function () {});
-      iconOn.style.display  = "block";
-      iconOff.style.display = "none";
+  // true = currently playing, false = paused
+  var isPlaying = false;
+
+  function updateBtn(playing) {
+    isPlaying = playing;
+    if (playing) {
+      iconOn.style.display   = "block";
+      iconOff.style.display  = "none";
       musicLabel.textContent = "Music on";
-      musicBtn.setAttribute("aria-label", "Mute background music");
+      musicBtn.setAttribute("aria-label", "Pause music");
       musicBtn.classList.remove("muted");
       musicBtn.classList.add("playing");
+    } else {
+      iconOn.style.display   = "none";
+      iconOff.style.display  = "block";
+      musicLabel.textContent = "Music off";
+      musicBtn.setAttribute("aria-label", "Play music");
+      musicBtn.classList.add("muted");
+      musicBtn.classList.remove("playing");
     }
   }
 
-  musicBtn.addEventListener("click", function () {
-    setMusicState(!isMuted);
+  // Start in "off" state — honest about what's happening
+  updateBtn(false);
+
+  function startAudio() {
+    audio.play().then(function () {
+      updateBtn(true);
+    }).catch(function (err) {
+      console.warn("Audio play failed:", err);
+      updateBtn(false);
+    });
+  }
+
+  // Button click: toggle play / pause
+  musicBtn.addEventListener("click", function (e) {
+    e.stopPropagation(); // don't bubble to document
+    if (isPlaying) {
+      audio.pause();
+      updateBtn(false);
+    } else {
+      startAudio();
+    }
   });
 
-  // Browsers block autoplay until the user interacts with the page.
-  // We attempt to play on the first user gesture anywhere on the page.
-  var started = false;
-  function tryStart() {
-    if (started || isMuted) return;
-    started = true;
-    audio.play().then(function () {
-      musicBtn.classList.add("playing");
-    }).catch(function () {
-      // still blocked — user can click the button manually
-    });
-    document.removeEventListener("click", tryStart);
-    document.removeEventListener("keydown", tryStart);
-    document.removeEventListener("touchstart", tryStart);
+  // Auto-start on first interaction anywhere EXCEPT the music button itself
+  // (button click is handled above)
+  var autoStarted = false;
+  function onFirstGesture(e) {
+    if (autoStarted) return;
+    if (e.target === musicBtn || musicBtn.contains(e.target)) return;
+    autoStarted = true;
+    startAudio();
+    document.removeEventListener("click",      onFirstGesture);
+    document.removeEventListener("keydown",    onFirstGesture);
+    document.removeEventListener("touchstart", onFirstGesture);
   }
-  document.addEventListener("click", tryStart);
-  document.addEventListener("keydown", tryStart);
-  document.addEventListener("touchstart", tryStart);
+  document.addEventListener("click",      onFirstGesture);
+  document.addEventListener("keydown",    onFirstGesture);
+  document.addEventListener("touchstart", onFirstGesture);
   // ──────────────────────────────────────────────────────────
 
   buildGrid();
